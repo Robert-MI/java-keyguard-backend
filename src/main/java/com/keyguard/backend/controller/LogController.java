@@ -22,7 +22,7 @@ public class LogController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<?> uploadLogs(@RequestBody EncryptedLogBatchRequest request) {
+    public ResponseEntity<String> uploadLogs(@RequestBody EncryptedLogBatchRequest request) {
         logService.saveBatch(request.getRecords());
         return ResponseEntity.ok("Logs received");
     }
@@ -43,6 +43,16 @@ public class LogController {
 
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(createPageResponse(logService.getAllLogs(pageable)));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteLog(@PathVariable Long id) {
+        try {
+            logService.deleteLog(id);
+            return ResponseEntity.ok("Log entry " + id + " deleted successfully.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
     }
 
     private Map<String, Object> createPageResponse(Page<?> page) {

@@ -1,5 +1,6 @@
 package com.keyguard.backend.service;
 
+import com.keyguard.backend.dto.DecryptedLogResponse;
 import com.keyguard.backend.dto.EncryptedLogUploadRequest;
 import com.keyguard.backend.model.EncryptedLogRecord;
 import com.keyguard.backend.repository.EncryptedLogRecordRepository;
@@ -44,17 +45,21 @@ public class LogService {
         return repository.findAll(pageable);
     }
 
-    public Page<EncryptedLogUploadRequest> getAllLogs(Pageable pageable) {
-        Page<EncryptedLogRecord> recordPage = repository.findAll(pageable);
+    public Page<DecryptedLogResponse> getAllLogs(Pageable pageable) {
+        return repository.findAll(pageable).map(record -> new DecryptedLogResponse(
+                record.getId(),
+                record.getTimestamp(),
+                decrypt(record.getEncryptedContext()),
+                decrypt(record.getEncryptedPayload())
+        ));
+    }
 
-        return recordPage.map(record -> {
-            EncryptedLogUploadRequest dto = new EncryptedLogUploadRequest();
-            dto.setId(record.getAgentLogId());
-            dto.setTimestamp(record.getTimestamp());
-            dto.setEncryptedContext(decrypt(record.getEncryptedContext()));
-            dto.setEncryptedPayload(decrypt(record.getEncryptedPayload()));
-            return dto;
-        });
+    public void deleteLog(Long id) {
+        if (repository.existsById(id)) {
+            repository.deleteById(id);
+        } else {
+            throw new RuntimeException("Log not found with id: " + id);
+        }
     }
 
     public String decrypt(String encryptedText) {
