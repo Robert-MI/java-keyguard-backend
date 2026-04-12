@@ -3,8 +3,8 @@ package com.keyguard.backend.controller;
 import com.keyguard.backend.dto.EncryptedLogBatchRequest;
 import com.keyguard.backend.service.LogService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,12 +28,20 @@ public class LogController {
     }
 
     @GetMapping("/raw")
-    public ResponseEntity<Map<String, Object>> getRawLogs(@PageableDefault(size = 20) Pageable pageable) {
+    public ResponseEntity<Map<String, Object>> getRawLogs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(createPageResponse(logService.getAllRawLogs(pageable)));
     }
 
     @GetMapping("/decrypted")
-    public ResponseEntity<Map<String, Object>> getLogs(@PageableDefault(size = 20) Pageable pageable) {
+    public ResponseEntity<Map<String, Object>> getLogs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(createPageResponse(logService.getAllLogs(pageable)));
     }
 
