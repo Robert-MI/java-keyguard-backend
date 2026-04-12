@@ -6,8 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class JavaKeyguardBackendApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(JavaKeyguardBackendApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(JavaKeyguardBackendApplication.class, args);
+    }
 
 }
