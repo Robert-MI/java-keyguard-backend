@@ -62,6 +62,14 @@ public class LogService {
         }
     }
 
+    public void deleteLogs(List<Long> ids) {
+        try {
+            repository.deleteAllById(ids);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete log batch", e);
+        }
+    }
+
     public String decrypt(String encryptedText) {
         try {
             Cipher cipher = Cipher.getInstance("AES");
