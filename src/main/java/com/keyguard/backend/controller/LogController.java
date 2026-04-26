@@ -1,11 +1,15 @@
 package com.keyguard.backend.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.keyguard.backend.dto.EncryptedLogBatchRequest;
+import com.keyguard.backend.security.HmacUtil;
 import com.keyguard.backend.service.LogService;
+import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,20 +17,33 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@AllArgsConstructor
 @RestController
 @RequestMapping("/logs")
 public class LogController {
 
     private final LogService logService;
-
-    public LogController(LogService logService) {
-        this.logService = logService;
-    }
+    private final HmacUtil hmacUtil;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadLogs(@RequestBody EncryptedLogBatchRequest request) {
-        logService.saveBatch(request.getRecords());
-        return ResponseEntity.ok("Logs received");
+    public ResponseEntity<String> uploadLogs(
+            @RequestBody String rawPayload,
+            @RequestHeader(value = "X-Timestamp", required = false) String timestamp,
+            @RequestHeader(value = "X-Signature", required = false) String signature) {
+
+        if (!hmacUtil.isValidSignature(rawPayload, timestamp, signature)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired signature");
+        }
+
+        try {
+            EncryptedLogBatchRequest request = objectMapper.readValue(rawPayload, EncryptedLogBatchRequest.class);
+
+            logService.saveBatch(request.getRecords());
+            return ResponseEntity.ok("Logs received and securely verified");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid payload format");
+        }
     }
 
     @GetMapping("/raw")
