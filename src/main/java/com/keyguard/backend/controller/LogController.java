@@ -29,17 +29,18 @@ public class LogController {
     @PostMapping("/upload")
     public ResponseEntity<String> uploadLogs(
             @RequestBody String rawPayload,
-            @RequestHeader(value = "X-Timestamp", required = false) String timestamp,
-            @RequestHeader(value = "X-Signature", required = false) String signature) {
+            @RequestHeader(value = "X-Agent-Id") String agentId,
+            @RequestHeader(value = "X-Timestamp") String timestamp,
+            @RequestHeader(value = "X-Signature") String signature) {
 
-        if (!hmacUtil.isValidSignature(rawPayload, timestamp, signature)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired signature");
+        if (!hmacUtil.isValidSignature(rawPayload, timestamp, signature, agentId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid signature or unknown agent");
         }
 
         try {
             EncryptedLogBatchRequest request = objectMapper.readValue(rawPayload, EncryptedLogBatchRequest.class);
 
-            logService.saveBatch(request.getRecords());
+            logService.saveBatch(request.getRecords(), agentId);
             return ResponseEntity.ok("Logs received and securely verified");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid payload format");

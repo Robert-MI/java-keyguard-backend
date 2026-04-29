@@ -28,4 +28,7 @@ public class EncryptedLogRecord {
 
     @Column(name = "encrypted_payload", columnDefinition = "TEXT")
     private String encryptedPayload;
+
+    @Column(name = "agent_id")
+    private String agentId;
 }

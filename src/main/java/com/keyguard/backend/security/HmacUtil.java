@@ -1,6 +1,6 @@
 package com.keyguard.backend.security;
 
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -8,16 +8,21 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+@RequiredArgsConstructor
 @Component
 public class HmacUtil {
 
-    @Value("${api.hmac.secret}")
-    private String secret;
+    private final KeyManagementService keyManagementService;
 
     private static final long MAX_REQUEST_AGE_MS = 3600000;
 
-    public boolean isValidSignature(String payload, String timestamp, String providedSignature) {
-        if (timestamp == null || providedSignature == null) {
+    public boolean isValidSignature(String payload, String timestamp, String providedSignature, String agentId) {
+        if (timestamp == null || providedSignature == null || agentId == null) {
+            return false;
+        }
+
+        String secret = keyManagementService.getHmacSecret(agentId);
+        if (secret == null) {
             return false;
         }
 
