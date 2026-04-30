@@ -1,41 +1,58 @@
 package com.keyguard.backend.security;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.keyguard.backend.model.User;
+import com.keyguard.backend.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
-    @Value("${api.admin.username}")
-    private String adminUsername;
-
-    @Value("${api.admin.password}")
-    private String adminPassword;
-
     private final JwtUtil jwtUtil;
-
-    public AuthController(JwtUtil jwtUtil) {
-        this.jwtUtil = jwtUtil;
-    }
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest credentials) {
-        String username = credentials.getUsername();
-        String password = credentials.getPassword();
+        User user = userRepository.findByUsername(credentials.getUsername())
+                .orElse(null);
 
-        if (adminUsername.equals(username) && adminPassword.equals(password)) {
-            String token = jwtUtil.generateToken(username);
-            return ResponseEntity.ok(Map.of("token", token));
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
 
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        if (user.getLockoutUntil() != null && user.getLockoutUntil().isAfter(LocalDateTime.now())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Account locked. Try again later.");
+        }
+
+        if (passwordEncoder.matches(credentials.getPassword(), user.getPassword())) {
+            user.setFailedAttempts(0);
+            user.setLockoutUntil(null);
+            userRepository.save(user);
+
+            String token = jwtUtil.generateToken(user.getUsername());
+            return ResponseEntity.ok(Map.of("token", token));
+        } else {
+            int attempts = user.getFailedAttempts() + 1;
+            user.setFailedAttempts(attempts);
+
+            if (attempts >= 5) {
+                user.setLockoutUntil(LocalDateTime.now().plusMinutes(15));
+            }
+
+            userRepository.save(user);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        }
     }
 }
